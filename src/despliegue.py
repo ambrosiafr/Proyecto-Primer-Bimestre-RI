@@ -15,7 +15,8 @@ def obtener_artefactos(carpeta):
         return
     if not url.startswith('https://') or len(checksum) != 64:
         raise ValueError('Configura ARTIFACTS_URL HTTPS y ARTIFACTS_SHA256')
-    with tempfile.TemporaryDirectory() as tmp:
+    carpeta.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=carpeta.parent) as tmp:
         paquete = Path(tmp) / 'artefactos.zip'
         urllib.request.urlretrieve(url, paquete)
         with paquete.open('rb') as f:
