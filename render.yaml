@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: fiqa-buscador
+    runtime: python
+    plan: free
+    buildCommand: pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ARTIFACTS_URL
+        sync: false
+      - key: ARTIFACTS_SHA256
+        sync: false
