@@ -2,7 +2,7 @@
 
 **Integrantes:** Sebastián Chicaiza y Juan Murillo.
 
-**Repositorio:** [Proyecto-Primer-Bimestre-RI](https://github.com/ambrosiafr/Proyecto-Primer-Bimestre-RI).
+**Página del Proyecto:** https://proyecto-primer-bimestre-ri-jywrddu9m56mmfodc4qjea.streamlit.app/
 
 Aplicación en Python y Streamlit para comparar Jaccard binario, TF-IDF con coseno, BM25 y embeddings con FAISS. Los modelos clásicos utilizan un índice invertido y fórmulas implementadas con bucles y diccionarios. La búsqueda utiliza los **57.638 documentos del corpus FiQA**.
 
