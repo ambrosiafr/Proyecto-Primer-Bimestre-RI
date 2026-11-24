@@ -1,5 +1,5 @@
 import argparse
-from src.archivos import ROOT, guardar, leer, huella
+from src.archivos import ROOT, guardar, leer
 from src.datos import cargar_fiqa, leer_textos
 from src.indice import construir_varios
 from src.preprocesamiento import METODOS, procesar_documentos_varios
@@ -28,23 +28,23 @@ def main():
         guardar(cache, {'documentos': documentos, 'consultas': consultas, 'qrels': qrels})
     if args.limite:
         documentos = dict(list(documentos.items())[:args.limite])
-    fingerprint = huella(documentos)
     guardar(salida / 'corpus.json.gz', {
         'documentos': documentos, 'consultas': consultas, 'qrels': qrels,
-        'huella': fingerprint, 'completo': not args.limite and not args.carpeta_txt,
+        'completo': not args.limite and not args.carpeta_txt,
         'origen': 'txt' if args.carpeta_txt else 'FiQA',
     })
     metodos = [args.metodo] if args.metodo else list(METODOS)
     print(f'Preparando {metodos}: {len(documentos)} documentos', flush=True)
-    indices = construir_varios(procesar_documentos_varios(documentos, metodos, args.workers), metodos, fingerprint)
+    indices = construir_varios(procesar_documentos_varios(documentos, metodos, args.workers), metodos)
     for metodo, datos in indices.items():
         guardar(salida / f'indice_{metodo}.json.gz', datos)
         print(f'Vocabulario: {len(datos["indice"])}', flush=True)
-    # Invalidar selección y evaluaciones anteriores si cambia el corpus.
-    seleccion = salida / 'seleccion.json.gz'
-    if seleccion.exists() and (leer(seleccion).get('huella') != fingerprint
-                               or leer(seleccion).get('version_modelos') != 2):
-        seleccion.unlink()
+    # Los artefactos dependen del corpus: se regeneran con el nuevo conjunto.
+    for nombre in ('seleccion.json.gz', 'evaluacion_dev.json.gz', 'evaluacion_test.json.gz',
+                   'vectores.faiss', 'vectores.json'):
+        ruta = salida / nombre
+        if ruta.exists():
+            ruta.unlink()
     print('Índices guardados. Siguiente paso: comparar_preprocesamiento.', flush=True)
 
 

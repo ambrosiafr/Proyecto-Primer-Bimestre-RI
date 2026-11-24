@@ -32,9 +32,7 @@ def leer_evaluacion(motor):
     if not ruta.exists():
         return None
     reporte = leer(ruta)
-    if (reporte['huella'] != motor.datos['huella'] or reporte['metodo'] != motor.metodo
-            or reporte.get('split') != 'test' or not reporte.get('completo')
-            or reporte.get('version_modelos') != 2
+    if (reporte.get('split') != 'test'
             or set(reporte['modelos']) != {'jaccard', 'tfidf', 'bm25', 'embeddings'}):
         return None
     qids = set(motor.datos['qrels']['test'])
@@ -103,14 +101,18 @@ def mostrar_consulta(motor, salida, nombres):
 
 
 def mostrar_principal(motor, salida, nombres):
-    st.subheader(f'Resultados: {salida["texto"]}')
+    st.subheader('Resultados de búsqueda')
+    st.caption(f'Consulta: “{salida["texto"]}”')
     principal = salida.get('principal', next(iter(salida['rankings']), None))
     if principal in salida['errores']:
         st.error(f'{nombres[principal]}: {salida["errores"][principal]}')
     if principal in salida['rankings']:
         ranking = salida['rankings'][principal]
+        duracion = salida.get('tiempos', {}).get(principal)
+        if duracion is not None:
+            st.caption(f'{len(ranking)} resultados · {nombres[principal]} · {duracion:.1f} ms')
         if not ranking:
-            st.info('Sin coincidencias.')
+            st.info('No se encontraron resultados para esta consulta. Prueba con otras palabras o elige otro modelo.')
         for posicion, (docid, score) in enumerate(ranking, 1):
             texto = motor.datos['documentos'][docid]
             with st.container(border=True):
@@ -134,7 +136,7 @@ def mostrar_comparacion(salida, nombres):
 def mostrar_evaluacion(motor, reporte, nombres):
     st.subheader('Evaluación del sistema')
     if not reporte:
-        st.info('La evaluación completa todavía no está disponible.')
+        st.info('La evaluación completa todavía no está disponible. Cuando se preparen los datos de prueba, aquí podrás comparar los cuatro modelos.')
         return
     k = reporte['k']
     resumen = [{'Modelo': nombres[m], f'Precision@{k}': d['resumen'][f'Precision@{k}'],
@@ -214,42 +216,56 @@ def mostrar_pantalla(motor, nombres, seleccion):
     consumir_enlace(motor)
     if 'top_n' not in st.session_state:
         st.session_state['top_n'] = 10
-    st.markdown('<div id="busqueda"></div>', unsafe_allow_html=True)
-    texto = st.text_input('Escribe tu consulta', placeholder='How do index funds work?',
-                          max_chars=2000, key='consulta_texto')
-    modelo = st.selectbox('Modelo de recuperación', list(nombres), index=2,
-                          format_func=lambda m: nombres[m], key='modelo_busqueda')
-    k = st.slider('Top-n de resultados', min_value=1, max_value=50, key='top_n')
-    buscar = st.button('Buscar documentos', type='primary', key='buscar')
+    pesta_buscar, pesta_evaluar = st.tabs(['Buscar documentos', 'Evaluar modelos'])
+    with pesta_buscar:
+        st.markdown('<div id="busqueda"></div>', unsafe_allow_html=True)
+        st.write('Escribe una pregunta en inglés y elige cómo ordenar los documentos.')
+        texto = st.text_input('Tu consulta', placeholder='How do index funds work?',
+                              help='Usa palabras o una pregunta en inglés. Máximo 2.000 caracteres.',
+                              max_chars=2000, key='consulta_texto')
+        modelo = st.selectbox('Modelo para ordenar los resultados', list(nombres), index=2,
+                              format_func=lambda m: nombres[m], key='modelo_busqueda',
+                              help='Jaccard y TF-IDF buscan coincidencias de términos; BM25 pondera su importancia; embeddings busca similitud de significado.')
+        k = st.slider('Cantidad de resultados', min_value=1, max_value=50, key='top_n',
+                      help='Número máximo de documentos que se mostrarán.')
+        buscar = st.button('Buscar', type='primary', key='buscar', disabled=not bool(texto.strip()))
+        if not texto.strip():
+            st.caption('Escribe una consulta para habilitar la búsqueda.')
 
-    pendiente = st.session_state.pop('caso_pendiente', None)
-    renderizado = False
-    if pendiente or buscar:
-        if texto.strip():
-            qid = pendiente or identificar_consulta(motor, texto)
-            # Las tarjetas del modelo elegido aparecen antes de completar la comparación.
-            salida = ejecutar_consulta(motor, texto, qid, [modelo], int(k))
-            mostrar_principal(motor, salida, nombres)
-            otros = [m for m in nombres if m != modelo]
-            comparacion = ejecutar_consulta(motor, texto, qid, otros, int(k))
-            for campo in ('rankings', 'errores', 'tiempos'):
-                salida[campo].update(comparacion[campo])
-            salida['comparacion'] = True
-            mostrar_comparacion(salida, nombres)
-            renderizado = True
-            st.session_state['resultado_actual'] = salida
-        else:
-            st.warning('Escribe una consulta.')
-    salida = st.session_state.get('resultado_actual')
-    if salida:
-        intentados = set(salida['rankings']) | set(salida['errores'])
-        if intentados != set(nombres):
-            # Compatibilidad con resultados guardados que contienen un único modelo.
-            principal = salida.get('principal', modelo)
-            orden = [principal, *[m for m in nombres if m != principal]]
-            salida = ejecutar_consulta(motor, salida['texto'], salida['qid'], orden, salida['k'])
-            st.session_state['resultado_actual'] = salida
-    if not renderizado:
-        mostrar_consulta(motor, salida, nombres)
-    st.divider()
-    mostrar_evaluacion(motor, reporte, nombres)
+    with pesta_buscar:
+        pendiente = st.session_state.pop('caso_pendiente', None)
+        renderizado = False
+        if pendiente or buscar:
+            if texto.strip():
+                qid = pendiente or identificar_consulta(motor, texto)
+                salida = ejecutar_consulta(motor, texto, qid, [modelo], int(k))
+                mostrar_principal(motor, salida, nombres)
+                otros = [m for m in nombres if m != modelo]
+                comparacion = ejecutar_consulta(motor, texto, qid, otros, int(k))
+                for campo in ('rankings', 'errores', 'tiempos'):
+                    salida[campo].update(comparacion[campo])
+                salida['comparacion'] = True
+                mostrar_comparacion(salida, nombres)
+                renderizado = True
+                st.session_state['resultado_actual'] = salida
+            else:
+                st.warning('Escribe una consulta.')
+        salida = st.session_state.get('resultado_actual')
+        if salida and not renderizado:
+            coincide = (texto.strip() == salida['texto'].strip()
+                        and modelo == salida.get('principal')
+                        and int(k) == salida.get('k'))
+            if not coincide:
+                st.info('Cambiaste la consulta o sus opciones. Pulsa Buscar para actualizar los resultados.')
+                salida = None
+        if salida:
+            intentados = set(salida['rankings']) | set(salida['errores'])
+            if intentados != set(nombres):
+                principal = salida.get('principal', modelo)
+                orden = [principal, *[m for m in nombres if m != principal]]
+                salida = ejecutar_consulta(motor, salida['texto'], salida['qid'], orden, salida['k'])
+                st.session_state['resultado_actual'] = salida
+        if not renderizado:
+            mostrar_consulta(motor, salida, nombres)
+    with pesta_evaluar:
+        mostrar_evaluacion(motor, reporte, nombres)

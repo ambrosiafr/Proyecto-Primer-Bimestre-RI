@@ -1,6 +1,5 @@
 """JSON comprimido: sin deserialización ejecutable mediante pickle."""
 import gzip
-import hashlib
 import json
 from pathlib import Path
 
@@ -19,10 +18,3 @@ def guardar(ruta, objeto):
 def leer(ruta):
     with gzip.open(ruta, 'rt', encoding='utf-8') as f:
         return json.load(f)
-
-
-def huella(documentos):
-    h = hashlib.sha256()
-    for docid, texto in documentos.items():
-        h.update(json.dumps([docid, texto], ensure_ascii=False).encode('utf-8'))
-    return h.hexdigest()

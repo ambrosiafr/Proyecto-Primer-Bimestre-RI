@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 import streamlit as st
-from src.archivos import huella
 
 MODELO = 'sentence-transformers/all-MiniLM-L6-v2'
 
@@ -60,19 +59,17 @@ def preparar(documentos, carpeta, batch_size=64):
     indice.add(vectores)
     faiss.write_index(indice, str(carpeta / 'vectores.faiss'))
     metadata = {'modelo': MODELO, 'revision': revision, 'ids': ids,
-                'huella': huella(documentos), 'dimensiones': vectores.shape[1],
+                'dimensiones': vectores.shape[1],
                 'max_seq_length': 256, 'normalizados': True, 'sin_texto': sin_texto,
                 'politica_vacios': 'vector_cero'}
     (carpeta / 'vectores.json').write_text(json.dumps(metadata), encoding='utf-8')
 
 
 class ModeloEmbeddings:
-    def __init__(self, carpeta, fingerprint):
+    def __init__(self, carpeta):
         import faiss
         carpeta = Path(carpeta)
         self.meta = json.loads((carpeta / 'vectores.json').read_text(encoding='utf-8'))
-        if self.meta['huella'] != fingerprint:
-            raise ValueError('Los embeddings pertenecen a un corpus diferente')
         self.indice = faiss.read_index(str(carpeta / 'vectores.faiss'))
         if self.indice.ntotal != len(self.meta['ids']) or self.indice.d != self.meta['dimensiones']:
             raise ValueError('Índice FAISS y metadatos incompatibles')

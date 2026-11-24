@@ -2,7 +2,7 @@
 
 **Integrantes:** Sebastián Chicaiza y Juan Murillo.
 
-**Página del Proyecto:** https://proyecto-primer-bimestre-ri-jywrddu9m56mmfodc4qjea.streamlit.app/
+**Repositorio:** [Proyecto-Primer-Bimestre-RI](https://github.com/ambrosiafr/Proyecto-Primer-Bimestre-RI).
 
 Aplicación en Python y Streamlit para comparar Jaccard binario, TF-IDF con coseno, BM25 y embeddings con FAISS. Los modelos clásicos utilizan un índice invertido y fórmulas implementadas con bucles y diccionarios. La búsqueda utiliza los **57.638 documentos del corpus FiQA**.
 
@@ -32,7 +32,7 @@ La preparación completa descarga FiQA, construye los índices, compara stemming
 .\.venv\Scripts\python.exe -m scripts.preparar_todo
 ```
 
-Este proceso se realiza una vez; el tiempo depende del equipo y de las descargas. Las búsquedas posteriores reutilizan los datos y los índices guardados localmente.
+Este proceso se realiza una vez; el tiempo depende del equipo y de las descargas. Las búsquedas posteriores reutilizan los datos y los índices guardados localmente. Si vuelves a preparar el corpus, se eliminan los índices semánticos, la selección y las evaluaciones anteriores; ejecuta de nuevo el pipeline completo para reconstruirlos.
 
 Para indexar otro corpus de archivos `.txt` UTF-8:
 
@@ -90,6 +90,17 @@ scripts/         Preparación de datos y evaluación
 .github/         Preparación del corpus en GitHub Actions
 render.yaml      Configuración de Render
 ```
+
+## Arquitectura y recorrido de una consulta
+
+La aplicación funciona con un navegador cliente y un servidor Streamlit. El navegador envía el texto, el modelo elegido y el número de resultados. `app.py` recibe la interacción y `src/motor.py` dirige la consulta a la ruta correspondiente:
+
+- **Modelos clásicos:** `src/preprocesamiento.py` tokeniza, filtra stopwords y aplica stemming. `src/modelos/clasicos.py` calcula Jaccard, TF-IDF o BM25 usando el índice invertido.
+- **Embeddings:** `src/modelos/embeddings.py` codifica el texto original con MiniLM y busca en FAISS.
+
+Ambas rutas producen un ranking de documentos y puntuaciones que vuelve a la interfaz para mostrar el top-n. La preparación del corpus, los índices y la evaluación se hace previamente con `scripts/preparar_todo.py`; las búsquedas reutilizan esos artefactos locales.
+
+![Diagrama de arquitectura y recorrido de consulta](arquitectura_cliente_servidor_ri.svg)
 
 ## Fuentes y licencias
 

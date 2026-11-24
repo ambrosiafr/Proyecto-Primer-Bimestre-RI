@@ -28,7 +28,7 @@ NOMBRES = {'jaccard': 'Binario · Jaccard', 'tfidf': 'Vectorial · TF-IDF',
 
 
 @st.cache_resource
-def cargar_motor(fingerprint, metodo, revision_vectorial, version_runtime):
+def cargar_motor():
     return Motor(CARPETA)
 
 
@@ -40,9 +40,7 @@ if not (CARPETA / 'seleccion.json.gz').exists():
 
 seleccion = leer(CARPETA / 'seleccion.json.gz')
 try:
-    revision_vectorial = tuple((CARPETA / nombre).stat().st_mtime_ns if (CARPETA / nombre).exists() else None
-                              for nombre in ('vectores.faiss', 'vectores.json'))
-    motor = cargar_motor(seleccion['huella'], seleccion['metodo'], revision_vectorial, version_runtime=4)
+    motor = cargar_motor()
 except (OSError, ValueError) as error:
     st.error(f'No se pudieron cargar los artefactos: {error}')
     st.stop()

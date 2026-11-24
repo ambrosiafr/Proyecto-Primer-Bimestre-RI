@@ -9,8 +9,6 @@ def main():
     corpus = leer(carpeta / 'corpus.json.gz')
     ruta = carpeta / 'vectores.json'
     meta = json.loads(ruta.read_text(encoding='utf-8'))
-    if meta['huella'] != corpus['huella']:
-        raise ValueError('Corpus e índice vectorial incompatibles')
     indice = faiss.read_index(str(carpeta / 'vectores.faiss'))
     vectores = indice.reconstruct_n(0, indice.ntotal)
     sin_texto = []

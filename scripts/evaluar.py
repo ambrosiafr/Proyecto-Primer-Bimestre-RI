@@ -17,10 +17,10 @@ def main():
     if not motor.datos['completo']:
         raise ValueError('Evaluar oficialmente exige el corpus FiQA completo')
     salida = {'split': args.split, 'k': args.k, 'completo': True,
-              'version_modelos': 2, 'bm25': {'k1': 1.2, 'b': 0.75, 'qf': False},
+              'bm25': {'k1': 1.2, 'b': 0.75, 'qf': False},
               'tfidf': 'tf crudo * (ln((N+1)/(DF+1))+1), coseno',
               'politica_vacios': 'vector_cero',
-              'huella': motor.datos['huella'], 'metodo': motor.metodo,
+              'metodo': motor.metodo,
               'seleccion': motor.seleccion, 'modelos': {}}
     for modelo in args.modelos:
         # Excluir carga inicial de modelos del tiempo de búsqueda reportado.

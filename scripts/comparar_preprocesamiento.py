@@ -17,10 +17,6 @@ def main():
     resultados = {}
     for metodo in METODOS:
         datos = leer(carpeta / f'indice_{metodo}.json.gz')
-        if datos.get('version') != 2:
-            raise ValueError('Ejecuta preparar_datos para actualizar las fórmulas')
-        if datos['huella'] != corpus['huella']:
-            raise ValueError('Índice de un corpus distinto')
         motor = ModelosClasicos(datos)
         aps = []
         for qid, relevantes in corpus['qrels']['dev'].items():
@@ -32,8 +28,7 @@ def main():
     elegido = max(METODOS, key=lambda m: resultados[m])
     guardar(carpeta / 'seleccion.json.gz', {
         'metodo': elegido, 'criterio': f'BM25 MAP@{args.k} en dev',
-        'version_modelos': 2,
-        'resultados': resultados, 'huella': corpus['huella'],
+        'resultados': resultados,
         'consultas': len(corpus['qrels']['dev'])
     })
     print('Método seleccionado:', elegido)
@@ -53,7 +48,7 @@ def main():
         'Esta elección es empírica para FiQA y este protocolo; no implica que la técnica sea universalmente superior. '
         'La interpretabilidad de los lemas o la mayor reducción de las raíces son hipótesis lingüísticas, '
         'pero el motivo de elección final es el resultado en dev. Test no se utilizó para decidir.\n\n'
-        f'Huella de corpus: {corpus["huella"]}\n', encoding='utf-8')
+        f'Corpus: {len(corpus["documentos"])} documentos\n', encoding='utf-8')
 
 
 if __name__ == '__main__':

@@ -26,12 +26,12 @@ def get_voc(indice):
     return set(indice)
 
 
-def construir(docs_procesados, metodo, fingerprint):
+def construir(docs_procesados, metodo):
     indice, longitudes, unicos = indice_inv(docs_procesados)
-    return finalizar(indice, longitudes, unicos, metodo, fingerprint)
+    return finalizar(indice, longitudes, unicos, metodo)
 
 
-def construir_varios(documentos_procesados, metodos, fingerprint):
+def construir_varios(documentos_procesados, metodos):
     estructuras = {m: ({}, {}, {}) for m in metodos}
     for docid, variantes in documentos_procesados:
         for metodo, tokens in variantes.items():
@@ -41,10 +41,10 @@ def construir_varios(documentos_procesados, metodos, fingerprint):
             unicos[docid] = len(frecuencias)
             for termino, tf in frecuencias.items():
                 indice.setdefault(termino, {})[docid] = tf
-    return {m: finalizar(*estructuras[m], m, fingerprint) for m in metodos}
+    return {m: finalizar(*estructuras[m], m) for m in metodos}
 
 
-def finalizar(indice, longitudes, unicos, metodo, fingerprint):
+def finalizar(indice, longitudes, unicos, metodo):
     n = len(longitudes)
     if not n:
         raise ValueError('Corpus vacío')
@@ -54,7 +54,7 @@ def finalizar(indice, longitudes, unicos, metodo, fingerprint):
         for docid, tf in postings.items():
             normas2[docid] += (tf * idf[termino]) ** 2
     return {
-        'version': 2, 'metodo': metodo, 'huella': fingerprint, 'N': n,
+        'metodo': metodo, 'N': n,
         'indice': indice, 'longitudes': longitudes, 'unicos': unicos,
         'idf': idf, 'normas': {d: math.sqrt(v) for d, v in normas2.items()},
         'promedio_longitud': sum(longitudes.values()) / n
