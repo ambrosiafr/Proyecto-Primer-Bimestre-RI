@@ -30,7 +30,8 @@ def average_precision(recuperados, relevantes):
     """Promedio de precisión en las posiciones relevantes del ranking recibido."""
     if not relevantes:
         return 0.0
-    aciertos, suma = 0, 0.0
+    aciertos = 0
+    suma = 0.0
     for posicion, docid in enumerate(recuperados, 1):
         if docid in relevantes:
             aciertos += 1
@@ -47,26 +48,50 @@ def mean_average_precision(valores_ap):
 def metricas(ranking, qrels, k=10, completo=False):
     if k < 1:
         raise ValueError('k debe ser positivo')
-    ids = [str(docid) for docid, _ in ranking]
+    ids = []
+    for docid, puntaje in ranking:
+        ids.append(str(docid))
     if len(ids) != len(set(ids)):
         raise ValueError('Ranking con documentos repetidos')
-    relevantes = {str(d) for d, score in qrels.items() if score > 0}
-    recorrido = ids if completo else ids[:k]
+    relevantes = set()
+    for docid, relevancia in qrels.items():
+        if relevancia > 0:
+            relevantes.add(str(docid))
+    if completo:
+        recorrido = ids
+        nombre_ap = 'AP'
+    else:
+        recorrido = ids[:k]
+        nombre_ap = f'AP@{k}'
     return {
         f'Precision@{k}': precision(ids, relevantes, k),
         f'Recall@{k}': recall(ids, relevantes, k),
-        'AP' if completo else f'AP@{k}': average_precision(recorrido, relevantes)
+        nombre_ap: average_precision(recorrido, relevantes)
     }
 
 
 def resumir(filas, k=10, completo=True):
     if not filas:
         raise ValueError('No hay consultas evaluadas')
-    ap = 'AP' if completo else f'AP@{k}'
+    if completo:
+        ap = 'AP'
+        nombre_map = 'MAP'
+    else:
+        ap = f'AP@{k}'
+        nombre_map = f'MAP@{k}'
+    precisiones = []
+    recalls = []
+    valores_ap = []
+    tiempos = []
+    for fila in filas:
+        precisiones.append(fila[f'Precision@{k}'])
+        recalls.append(fila[f'Recall@{k}'])
+        valores_ap.append(fila[ap])
+        tiempos.append(fila['ms'])
     return {
         'consultas': len(filas),
-        f'Precision@{k}': mean(f[f'Precision@{k}'] for f in filas),
-        f'Recall@{k}': mean(f[f'Recall@{k}'] for f in filas),
-        'MAP' if completo else f'MAP@{k}': mean_average_precision([f[ap] for f in filas]),
-        'ms_por_consulta': mean(f['ms'] for f in filas)
+        f'Precision@{k}': mean(precisiones),
+        f'Recall@{k}': mean(recalls),
+        nombre_map: mean_average_precision(valores_ap),
+        'ms_por_consulta': mean(tiempos)
     }

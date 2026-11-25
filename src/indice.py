@@ -1,61 +1,66 @@
-"""Índice invertido, frecuencias documentales y vocabulario."""
+"""Construcción del índice invertido y estadísticas de los documentos."""
 from collections import Counter
 import math
 
 
-def indice_inv(docs_procesados):
-    """Asocia cada término con los documentos y sus frecuencias."""
-    indice, longitudes, unicos = {}, {}, {}
-    elementos = docs_procesados.items() if hasattr(docs_procesados, 'items') else docs_procesados
-    for docid, tokens in elementos:
-        frecuencias = Counter(tokens)
-        longitudes[docid] = len(tokens)
-        unicos[docid] = len(frecuencias)
-        for termino, tf in frecuencias.items():
-            indice.setdefault(termino, {})[docid] = tf
-    return indice, longitudes, unicos
-
-
-def docfrec(indice):
-    """Cantidad de documentos que contienen cada término."""
-    return {termino: len(postings) for termino, postings in indice.items()}
-
-
-def get_voc(indice):
-    """Conjunto de términos presentes en el índice."""
-    return set(indice)
-
-
-def construir(docs_procesados, metodo):
-    indice, longitudes, unicos = indice_inv(docs_procesados)
-    return finalizar(indice, longitudes, unicos, metodo)
-
-
 def construir_varios(documentos_procesados, metodos):
-    estructuras = {m: ({}, {}, {}) for m in metodos}
+    estructuras = {}
+    for metodo in metodos:
+        estructuras[metodo] = {
+            'indice': {},
+            'longitudes': {},
+            'unicos': {}
+        }
+
     for docid, variantes in documentos_procesados:
         for metodo, tokens in variantes.items():
-            indice, longitudes, unicos = estructuras[metodo]
+            datos = estructuras[metodo]
             frecuencias = Counter(tokens)
-            longitudes[docid] = len(tokens)
-            unicos[docid] = len(frecuencias)
-            for termino, tf in frecuencias.items():
-                indice.setdefault(termino, {})[docid] = tf
-    return {m: finalizar(*estructuras[m], m) for m in metodos}
+            datos['longitudes'][docid] = len(tokens)
+            datos['unicos'][docid] = len(frecuencias)
+
+            for termino, frecuencia in frecuencias.items():
+                if termino not in datos['indice']:
+                    datos['indice'][termino] = {}
+                datos['indice'][termino][docid] = frecuencia
+
+    indices = {}
+    for metodo in metodos:
+        datos = estructuras[metodo]
+        indices[metodo] = finalizar(
+            datos['indice'], datos['longitudes'], datos['unicos'], metodo
+        )
+    return indices
 
 
 def finalizar(indice, longitudes, unicos, metodo):
-    n = len(longitudes)
-    if not n:
+    cantidad_documentos = len(longitudes)
+    if cantidad_documentos == 0:
         raise ValueError('Corpus vacío')
-    idf, normas2 = {}, dict.fromkeys(longitudes, 0.0)
-    for termino, postings in indice.items():
-        idf[termino] = math.log((n + 1) / (len(postings) + 1)) + 1
-        for docid, tf in postings.items():
-            normas2[docid] += (tf * idf[termino]) ** 2
+
+    idf = {}
+    sumas_cuadrados = {}
+    for docid in longitudes:
+        sumas_cuadrados[docid] = 0.0
+
+    for termino, documentos in indice.items():
+        frecuencia_documental = len(documentos)
+        idf[termino] = math.log((cantidad_documentos + 1) / (frecuencia_documental + 1)) + 1
+        for docid, frecuencia in documentos.items():
+            peso = frecuencia * idf[termino]
+            sumas_cuadrados[docid] += peso ** 2
+
+    normas = {}
+    for docid, suma in sumas_cuadrados.items():
+        normas[docid] = math.sqrt(suma)
+
     return {
-        'metodo': metodo, 'N': n,
-        'indice': indice, 'longitudes': longitudes, 'unicos': unicos,
-        'idf': idf, 'normas': {d: math.sqrt(v) for d, v in normas2.items()},
-        'promedio_longitud': sum(longitudes.values()) / n
+        'metodo': metodo,
+        'N': cantidad_documentos,
+        'indice': indice,
+        'longitudes': longitudes,
+        'unicos': unicos,
+        'idf': idf,
+        'normas': normas,
+        'promedio_longitud': sum(longitudes.values()) / cantidad_documentos
     }

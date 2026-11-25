@@ -20,6 +20,17 @@ def por_tipo(reporte):
     for modelo, datos in reporte['modelos'].items():
         for fila in datos['consultas']:
             categoria = tipo_consulta(fila['consulta'])
-            grupos.setdefault((categoria, modelo), []).append(fila['AP'])
-    return [{'tipo': categoria, 'modelo': modelo, 'consultas': len(aps), 'MAP': mean(aps)}
-            for (categoria, modelo), aps in sorted(grupos.items())]
+            clave = (categoria, modelo)
+            if clave not in grupos:
+                grupos[clave] = []
+            grupos[clave].append(fila['AP'])
+    resultados = []
+    for clave, valores_ap in sorted(grupos.items()):
+        categoria, modelo = clave
+        resultados.append({
+            'tipo': categoria,
+            'modelo': modelo,
+            'consultas': len(valores_ap),
+            'MAP': mean(valores_ap)
+        })
+    return resultados

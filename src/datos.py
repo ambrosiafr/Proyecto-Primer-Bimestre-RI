@@ -21,9 +21,15 @@ def cargar_fiqa(destino):
                 ruta = hf_hub_download(repo, nombre, repo_type='dataset', revision=revision)
                 for fila in pd.read_parquet(ruta).to_dict('records'):
                     docid = str(fila['_id'])
-                    texto = str(fila.get('text') or '')
+                    texto = fila.get('text')
+                    if not texto:
+                        texto = ''
+                    texto = str(texto)
                     if configuracion == 'corpus':
-                        texto = (str(fila.get('title') or '') + ' ' + texto).strip()
+                        titulo = fila.get('title')
+                        if not titulo:
+                            titulo = ''
+                        texto = (str(titulo) + ' ' + texto).strip()
                     if docid in filas:
                         raise ValueError(f'ID duplicado: {docid}')
                     filas[docid] = texto
@@ -52,16 +58,10 @@ def leer_qrels(ruta):
     resultado = {}
     with open(ruta, encoding='utf-8') as f:
         for fila in csv.DictReader(f, delimiter='\t'):
-            resultado.setdefault(str(fila['query-id']), {})[str(fila['corpus-id'])] = int(fila['score'])
+            qid = str(fila['query-id'])
+            docid = str(fila['corpus-id'])
+            relevancia = int(fila['score'])
+            if qid not in resultado:
+                resultado[qid] = {}
+            resultado[qid][docid] = relevancia
     return resultado
-
-
-def leer_textos(carpeta):
-    """Corpus alternativo de .txt UTF-8; IDs = rutas relativas sin extensión."""
-    carpeta = Path(carpeta)
-    docs = {}
-    for ruta in sorted(carpeta.rglob('*.txt')):
-        docs[ruta.relative_to(carpeta).with_suffix('').as_posix()] = ruta.read_text(encoding='utf-8')
-    if not docs:
-        raise ValueError('La carpeta no contiene documentos .txt')
-    return docs

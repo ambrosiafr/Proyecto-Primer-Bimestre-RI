@@ -10,5 +10,3 @@ services:
         value: 3.11.9
       - key: ARTIFACTS_URL
         sync: false
-      - key: ARTIFACTS_SHA256
-        sync: false

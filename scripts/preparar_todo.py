@@ -4,7 +4,7 @@ import sys
 
 
 def main():
-    for modulo in ('inspeccionar_preprocesamiento', 'preparar_datos', 'comparar_preprocesamiento', 'preparar_embeddings', 'evaluar'):
+    for modulo in ('preparar_datos', 'comparar_preprocesamiento', 'preparar_embeddings', 'evaluar'):
         subprocess.run([sys.executable, '-m', 'scripts.' + modulo], check=True)
 
 

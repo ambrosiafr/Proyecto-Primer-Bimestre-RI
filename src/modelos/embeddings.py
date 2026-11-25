@@ -47,19 +47,24 @@ def preparar(documentos, carpeta, batch_size=64):
     revision = HfApi().model_info(MODELO).sha
     encoder = codificador(MODELO, revision)
     encoder.max_seq_length = 256
+    # La fila de cada vector corresponde al ID en esta misma posición.
     ids = list(documentos)
-    vectores = encoder.encode(list(documentos.values()), batch_size=batch_size,
+    textos = list(documentos.values())
+    vectores = encoder.encode(textos, batch_size=batch_size,
                               normalize_embeddings=True, show_progress_bar=True)
     vectores = np.ascontiguousarray(vectores, dtype='float32')
-    sin_texto = [docid for docid in ids if not documentos[docid].strip()]
+    sin_texto = []
     for posicion, docid in enumerate(ids):
-        if docid in sin_texto:
+        if not documentos[docid].strip():
+            sin_texto.append(docid)
             vectores[posicion] = 0
-    indice = faiss.IndexFlatIP(vectores.shape[1])
+    dimensiones = vectores.shape[1]
+    indice = faiss.IndexFlatIP(dimensiones)
+    # FAISS recibe la matriz numérica; los textos permanecen en el corpus.
     indice.add(vectores)
     faiss.write_index(indice, str(carpeta / 'vectores.faiss'))
     metadata = {'modelo': MODELO, 'revision': revision, 'ids': ids,
-                'dimensiones': vectores.shape[1],
+                'dimensiones': dimensiones,
                 'max_seq_length': 256, 'normalizados': True, 'sin_texto': sin_texto,
                 'politica_vacios': 'vector_cero'}
     (carpeta / 'vectores.json').write_text(json.dumps(metadata), encoding='utf-8')
@@ -85,7 +90,20 @@ class ModeloEmbeddings:
             return []
         vector = self.encoder.encode([texto], normalize_embeddings=True)
         # Recuperar todos permite desempates deterministas también en el corte k.
-        scores, posiciones = self.indice.search(np.asarray(vector, dtype='float32'), self.indice.ntotal)
-        ranking = [(self.meta['ids'][int(i)], float(s)) for s, i in zip(scores[0], posiciones[0]) if i >= 0]
-        ranking.sort(key=lambda x: (-x[1], x[0]))
-        return ranking if completo else [(d, s) for d, s in ranking if d not in self.sin_texto][:top_k]
+        vector = np.asarray(vector, dtype='float32')
+        scores, posiciones = self.indice.search(vector, self.indice.ntotal)
+        ranking = []
+        for posicion, puntaje in zip(posiciones[0], scores[0]):
+            if posicion >= 0:
+                docid = self.meta['ids'][int(posicion)]
+                ranking.append((docid, float(puntaje)))
+        ranking.sort(key=lambda resultado: (-resultado[1], resultado[0]))
+        if completo:
+            return ranking
+        resultados = []
+        for docid, puntaje in ranking:
+            if docid not in self.sin_texto:
+                resultados.append((docid, puntaje))
+            if len(resultados) == top_k:
+                break
+        return resultados

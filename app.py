@@ -1,7 +1,7 @@
 """Punto de entrada de la interfaz web Streamlit."""
 import os
 import streamlit as st
-from src.archivos import ROOT, leer
+from src.archivos import ROOT
 from src.motor import Motor
 from src.despliegue import obtener_artefactos
 from src.interfaz import mostrar_pantalla
@@ -10,13 +10,12 @@ st.set_page_config(page_title='FiQA Sistema de Recuperación de Información', l
 st.title('FiQA Sistema de Recuperación de Información')
 st.caption('Sebastián Chicaiza y Juan Murillo · Recuperación de Información · Primer bimestre')
 CARPETA = ROOT / 'artefactos'
-for clave in ('ARTIFACTS_URL', 'ARTIFACTS_SHA256'):
-    if clave not in os.environ:
-        try:
-            if clave in st.secrets:
-                os.environ[clave] = str(st.secrets[clave])
-        except FileNotFoundError:
-            pass
+if 'ARTIFACTS_URL' not in os.environ:
+    try:
+        if 'ARTIFACTS_URL' in st.secrets:
+            os.environ['ARTIFACTS_URL'] = str(st.secrets['ARTIFACTS_URL'])
+    except FileNotFoundError:
+        pass
 try:
     with st.spinner('Preparando colección…'):
         obtener_artefactos(CARPETA)
@@ -38,11 +37,10 @@ if not (CARPETA / 'seleccion.json.gz').exists():
     st.markdown('Las instrucciones completas están en el README del repositorio.')
     st.stop()
 
-seleccion = leer(CARPETA / 'seleccion.json.gz')
 try:
     motor = cargar_motor()
 except (OSError, ValueError) as error:
     st.error(f'No se pudieron cargar los artefactos: {error}')
     st.stop()
 
-mostrar_pantalla(motor, NOMBRES, seleccion)
+mostrar_pantalla(motor, NOMBRES)

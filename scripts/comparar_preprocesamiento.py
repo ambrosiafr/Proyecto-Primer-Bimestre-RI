@@ -13,7 +13,7 @@ def main():
     carpeta = ROOT / 'artefactos'
     corpus = leer(carpeta / 'corpus.json.gz')
     if not corpus['completo']:
-        raise ValueError('La selección exige FiQA completo; el límite es solo para desarrollo')
+        raise ValueError('La selección exige el corpus FiQA completo')
     resultados = {}
     for metodo in METODOS:
         datos = leer(carpeta / f'indice_{metodo}.json.gz')
@@ -32,24 +32,6 @@ def main():
         'consultas': len(corpus['qrels']['dev'])
     })
     print('Método seleccionado:', elegido)
-    diferencia = abs(resultados['stemming'] - resultados['lematizacion'])
-    razon = (f'Obtuvo el mayor BM25 MAP@{args.k} de validación, con diferencia absoluta {diferencia:.6f}.'
-             if diferencia else 'Ambos empataron; se aplicó el desempate declarado a favor de stemming.')
-    (ROOT / 'output').mkdir(exist_ok=True)
-    (ROOT / 'output/resultados_validacion.md').write_text(
-        '# Selección de preprocesamiento: resultado real\n\n'
-        f'Corpus completo: {len(corpus["documentos"])} documentos. '
-        f'Consultas dev: {len(corpus["qrels"]["dev"])}.\n\n'
-        f'BM25 fijo: k1=1.2, b=0.75; términos únicos de consulta. '
-        f'Criterio: MAP@{args.k}, AP@k dividido por el total de relevantes.\n\n'
-        f'- Stemming: {resultados["stemming"]:.6f}\n'
-        f'- Lematización: {resultados["lematizacion"]:.6f}\n\n'
-        f'**Elegido: {elegido}.** {razon}\n\n'
-        'Esta elección es empírica para FiQA y este protocolo; no implica que la técnica sea universalmente superior. '
-        'La interpretabilidad de los lemas o la mayor reducción de las raíces son hipótesis lingüísticas, '
-        'pero el motivo de elección final es el resultado en dev. Test no se utilizó para decidir.\n\n'
-        f'Corpus: {len(corpus["documentos"])} documentos\n', encoding='utf-8')
-
 
 if __name__ == '__main__':
     main()
