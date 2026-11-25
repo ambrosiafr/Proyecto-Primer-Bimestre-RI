@@ -1,110 +1,98 @@
 # FiQA Sistema de Recuperación de Información
 
-**Integrantes:** Sebastián Chicaiza y Juan Murillo.
+Explora una colección de **57.638 documentos financieros** y compara cómo responden cuatro modelos de búsqueda a una misma pregunta. FiQA reúne recuperación por términos y búsqueda semántica en una interfaz web con resultados ordenados, textos completos y métricas de evaluación.
 
-**Repositorio:** [Proyecto-Primer-Bimestre-RI](https://github.com/ambrosiafr/Proyecto-Primer-Bimestre-RI).
+**[Abrir la aplicación](https://proyecto-primer-bimestre-ri-jywrddu9m56mmfodc4qjea.streamlit.app/)** · [Código fuente](https://github.com/ambrosiafr/Proyecto-Primer-Bimestre-RI)
 
-Aplicación en Python y Streamlit para comparar Jaccard binario, TF-IDF con coseno, BM25 y embeddings con FAISS. Los modelos clásicos utilizan un índice invertido y fórmulas implementadas con bucles y diccionarios. La búsqueda utiliza los **57.638 documentos del corpus FiQA**.
+## Encuentra y compara
 
-## Requisitos
+- Escribe una pregunta en inglés y elige el modelo de recuperación.
+- Selecciona cuántos resultados quieres consultar.
+- Revisa el encabezado, ID, puntaje y texto completo de cada documento.
+- Compara los rankings de los cuatro modelos para la misma consulta.
+- Explora las métricas por consulta, la comparación por tipo de pregunta y los casos donde cambia el resultado.
+- Descarga las métricas de evaluación en CSV.
 
-- Python 3.11.
-- Espacio para dependencias, corpus e índices. El procesamiento utiliza CPU.
+Una consulta como `How do index funds work?` permite explorar las diferencias entre las coincidencias de palabras y la similitud de significado.
 
-## Instalación
+## Cuatro formas de buscar
 
-Desde la carpeta del proyecto, en PowerShell:
+| Modelo | Criterio de recuperación |
+|---|---|
+| Binario · Jaccard | Coincidencia entre conjuntos de términos. |
+| Vectorial · TF-IDF | Similitud coseno con términos ponderados por frecuencia e importancia. |
+| Probabilístico · BM25 | Frecuencia y rareza de los términos, ajustadas por la longitud del documento. |
+| Semántico · Embeddings | Vectores de MiniLM y búsqueda de similitud mediante FAISS. |
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
+Cada modelo produce su propio ranking. Los puntajes usan escalas distintas; la tabla permite comparar las posiciones y los documentos recuperados.
 
-En Linux, el entorno se crea con `python3.11 -m venv .venv`; el ejecutable queda en `.venv/bin/python`.
+## Arquitectura
 
-El modelo de spaCy se instala junto con las dependencias. `requirements-lock.txt` registra el entorno probado en Windows.
+Streamlit integra la interfaz y el motor de recuperación en un servidor Python. Los módulos de búsqueda por términos y búsqueda semántica calculan y ordenan sus propios resultados. La aplicación recupera los textos mediante sus IDs y presenta las tarjetas y tablas de comparación.
 
-## Preparación de los datos
+Los índices y las métricas se preparan previamente y se reutilizan durante las búsquedas. MiniLM y FAISS se cargan cuando se necesitan y permanecen disponibles para las consultas posteriores.
 
-La preparación completa descarga FiQA, construye los índices, compara stemming y lematización con dev, genera los embeddings y evalúa test:
+![Arquitectura de componentes del sistema FiQA](arquitectura.png)
 
-```powershell
-.\.venv\Scripts\python.exe -m scripts.preparar_todo
-```
+## Evaluación de recuperación
 
-Este proceso se realiza una vez; el tiempo depende del equipo y de las descargas. Las búsquedas posteriores reutilizan los datos y los índices guardados localmente. Si vuelves a preparar el corpus, se eliminan los índices semánticos, la selección y las evaluaciones anteriores; ejecuta de nuevo el pipeline completo para reconstruirlos.
+Los cuatro modelos se evaluaron sobre el corpus completo con **648 consultas de prueba y 1.706 juicios de relevancia** de FiQA.
 
-Para indexar otro corpus de archivos `.txt` UTF-8:
-
-```powershell
-.\.venv\Scripts\python.exe -m scripts.preparar_datos --carpeta-txt ruta\documentos
-```
-
-Esta opción construye los índices del corpus propio; la evaluación incluida corresponde a FiQA y requiere sus consultas y qrels.
-
-## Inicio de la aplicación
-
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
-```
-
-La página se abre en `http://localhost:8501`. La terminal se mantiene abierta mientras se utiliza la aplicación. Ctrl+C detiene el servidor.
-
-El formulario permite escribir una consulta en inglés, elegir un modelo y definir el top-n. Las tarjetas muestran los resultados del modelo elegido; el detalle compara los cuatro rankings. El apartado de evaluación incluye todas las consultas test y una descarga general de métricas.
-
-La primera búsqueda carga spaCy y el codificador semántico. Las siguientes reutilizan esos recursos. Después de actualizar el código, se reinicia Streamlit para descartar los recursos anteriores.
-
-## Modelos y evaluación
-
-- **Jaccard:** intersección dividida por unión de términos únicos.
-- **TF-IDF:** frecuencia cruda e IDF suavizada `ln((N+1)/(df+1))+1`, con similitud de coseno.
-- **BM25:** k1=1.2 y b=0.75, con términos únicos de consulta.
-- **Embeddings:** all-MiniLM-L6-v2, 384 dimensiones y máximo 256 tokens. FAISS IndexFlatIP calcula coseno mediante vectores normalizados.
-
-Stemming obtuvo BM25 MAP@10 de 0.208685 en dev, frente a 0.196503 con lematización. Por ese resultado se utiliza stemming en los tres modelos clásicos. Embeddings recibe el texto original.
-
-La evaluación final utiliza **648 consultas test y 1.706 qrels** sobre el corpus completo. Train no se utiliza para entrenar los modelos y dev se reserva a la selección del preprocesamiento.
-
-| Modelo | Precision@10 media | Recall@10 medio | MAP completo |
+| Modelo | Precision@10 media | Recall@10 medio | MAP |
 |---|---:|---:|---:|
 | Jaccard | 0.0159 | 0.0649 | 0.0339 |
 | TF-IDF | 0.0511 | 0.2187 | 0.1354 |
 | BM25 | 0.0677 | 0.3071 | 0.2026 |
 | Embeddings | 0.1045 | 0.4413 | 0.3117 |
 
-Precision@10 divide los aciertos entre diez; Recall@10 los divide entre todos los relevantes. AP promedia la precisión en las posiciones relevantes del ranking completo y MAP promedia AP entre consultas. Los empates se ordenan por ID textual ascendente. Para evaluar el ranking completo, los modelos clásicos incluyen también los documentos con puntaje cero.
+Precision@10 y Recall@10 se promedian entre las consultas de prueba. MAP es el promedio de AP sobre los rankings completos. Estos resultados corresponden al conjunto test de FiQA; la aplicación permite consultar también el detalle de cada pregunta.
 
-Los documentos sin juicio se tratan como no relevantes para las métricas. Se conservan los 38 registros vacíos del corpus; sus vectores son cero y no aparecen como resultados interactivos. Los qrels sobre ellos permanecen en la evaluación. Los títulos originales están vacíos, por lo que las tarjetas utilizan fragmentos del texto como encabezados.
+## Ejecución local
 
-## Repositorio
+Se requiere **Python 3.11** y espacio para las dependencias, el corpus y los índices. El procesamiento utiliza CPU.
 
-El repositorio contiene el código de la aplicación, su configuración y este README. El informe técnico se entrega por separado. Los datos, los índices, el entorno virtual y los archivos internos quedan fuera del historial de Git. Los datos necesarios para ejecutar la aplicación se generan con el comando de preparación indicado arriba.
+### 1. Instalar
 
-## Estructura
+Desde la carpeta del repositorio, en PowerShell:
 
-```text
-app.py           Inicio de la aplicación
-src/             Datos, procesamiento, índices, modelos, métricas e interfaz
-scripts/         Preparación de datos y evaluación
-.streamlit/      Configuración visual
-.github/         Preparación del corpus en GitHub Actions
-render.yaml      Configuración de Render
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Arquitectura y recorrido de una consulta
+El modelo de inglés de spaCy se instala con las dependencias. En Linux, utiliza `python3.11 -m venv .venv` y `.venv/bin/python` en los comandos siguientes.
 
-La aplicación funciona con un navegador cliente y un servidor Streamlit. El navegador envía el texto, el modelo elegido y el número de resultados. `app.py` recibe la interacción y `src/motor.py` dirige la consulta a la ruta correspondiente:
+### 2. Obtener los datos preparados
 
-- **Modelos clásicos:** `src/preprocesamiento.py` tokeniza, filtra stopwords y aplica stemming. `src/modelos/clasicos.py` calcula Jaccard, TF-IDF o BM25 usando el índice invertido.
-- **Embeddings:** `src/modelos/embeddings.py` codifica el texto original con MiniLM y busca en FAISS.
+Descarga `fiqa-artefactos.zip` desde las [Releases del repositorio](https://github.com/ambrosiafr/Proyecto-Primer-Bimestre-RI/releases) y extrae su contenido en `artefactos/`. El archivo del corpus debe quedar en `artefactos/corpus.json.gz`, sin carpetas intermedias.
 
-Ambas rutas producen un ranking de documentos y puntuaciones que vuelve a la interfaz para mostrar el top-n. La preparación del corpus, los índices y la evaluación se hace previamente con `scripts/preparar_todo.py`; las búsquedas reutilizan esos artefactos locales.
+También se puede generar todo desde las fuentes originales:
 
-![Diagrama de arquitectura y recorrido de consulta](arquitectura_cliente_servidor_ri.svg)
+```powershell
+.\.venv\Scripts\python.exe -m scripts.preparar_todo
+```
 
-## Fuentes y licencias
+La preparación descarga FiQA, construye los índices, compara stemming y lematización con dev, genera los embeddings y evalúa test. Se realiza una vez; su duración depende del equipo. Al repetirla, se deben completar todas las etapas para mantener juntos los datos y sus índices.
 
-- [Corpus FiQA](https://huggingface.co/datasets/BeIR/fiqa) y [qrels](https://huggingface.co/datasets/BeIR/fiqa-qrels), bajo CC-BY-SA-4.0.
-- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2), bajo Apache-2.0.
+### 3. Iniciar
 
-Los datos y modelos se utilizan conforme a las condiciones de sus licencias.
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+Abre `http://localhost:8501`. Mantén la terminal abierta mientras utilizas la aplicación; `Ctrl+C` detiene el servidor. La primera búsqueda puede tardar más por la carga inicial de los modelos.
+
+## Datos y tecnología
+
+Los modelos clásicos utilizan fórmulas propias, un índice invertido y stemming, elegido mediante validación con BM25. La búsqueda semántica utiliza `all-MiniLM-L6-v2`, vectores de 384 dimensiones y FAISS `IndexFlatIP` con vectores normalizados. El modelo procesa hasta 256 tokens por texto.
+
+FiQA contiene textos en inglés; sus títulos originales están vacíos, por lo que los encabezados se extraen del contenido. Los documentos sin juicio se consideran no relevantes al evaluar. Se conservan los registros vacíos del corpus, pero se excluyen de los resultados interactivos.
+
+Los archivos preparados y el entorno virtual quedan fuera del historial de Git. En Streamlit Cloud, la aplicación puede descargar el ZIP mediante el secreto `ARTIFACTS_URL`; las consultas se procesan en el servidor.
+
+## Autores y fuentes
+
+**Sebastián Chicaiza y Juan Murillo** · Recuperación de Información.
+
+- [Corpus FiQA](https://huggingface.co/datasets/BeIR/fiqa) y [qrels](https://huggingface.co/datasets/BeIR/fiqa-qrels): CC-BY-SA-4.0.
+- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2): Apache-2.0.
